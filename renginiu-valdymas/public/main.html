@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Renginiai</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Renginiai</a>
+      <div id="nav-buttons" class="ms-auto"></div>
+    </div>
+  </nav>
+
+  <div class="container mt-5">
+    <h1 class="text-center">Visi Renginiai</h1>
+    <div id="action-buttons" class="text-end mb-3"></div>
+    <table class="table mt-4">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Pavadinimas</th>
+          <th>Vieta</th>
+          <th>Data</th>
+          <th>Nuotrauka</th>
+        </tr>
+      </thead>
+      <tbody id="events-table"></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function checkAuth() {
+      const nav = document.getElementById('nav-buttons');
+      const actionButtons = document.getElementById('action-buttons');
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        nav.innerHTML = `<a class="btn btn-primary" href="login.html">Prisijungti</a>`;
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/check', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          nav.innerHTML = `<button class="btn btn-danger" onclick="logout()">Atsijungti</button>`;
+
+          if (data.role === 'admin') {
+            actionButtons.innerHTML = `
+              <button class="btn btn-secondary" onclick="window.location.href='admino.html'">Admino panelė</button>
+            `;
+          } else if (data.role === 'user') {
+            actionButtons.innerHTML = `
+              <button class="btn btn-secondary" onclick="window.location.href='admin.html'">Pridėti renginį</button>
+            `;
+          }
+        } else {
+          throw new Error('Nepavyko autentifikuoti');
+        }
+      } catch (error) {
+        console.error('Klaida tikrinant autentifikaciją:', error);
+        localStorage.removeItem('token');
+        nav.innerHTML = `<a class="btn btn-primary" href="login.html">Prisijungti</a>`;
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token'); 
+      window.location.href = 'main.html'; 
+    }
+
+    async function loadEvents() {
+      const response = await fetch('/api/events');
+      const events = await response.json();
+      const table = document.getElementById('events-table');
+
+      table.innerHTML = events.map(event => `
+        <tr>
+          <td>${event.renginio_id}</td>
+          <td>${event.pavadinimas}</td>
+          <td>${event.vieta}</td>
+          <td>${event.data_laikas}</td>
+          <td>
+            ${event.nuotrauka 
+              ? `<img src="data:image/jpeg;base64,${event.nuotrauka}" alt="Nuotrauka" style="width: 100px; height: auto;">` 
+              : 'Nėra nuotraukos'}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    checkAuth();
+    loadEvents();
+  </script>
+</body>
+</html>
